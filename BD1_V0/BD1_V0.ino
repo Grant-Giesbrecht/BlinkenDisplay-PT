@@ -24,6 +24,10 @@ PIN_X_ENTER, DATA=<Encoding Scheme. See Macros below.>
 
 */
 
+#define VER_MAJOR 0
+#define VER_MINOR 0
+#define VER_PATCH 0
+
 // Encoding Scheme IDs
 #define ENCODING_INT     0b00
 #define ENCODING_FLOAT32 0b01
@@ -221,7 +225,6 @@ void loop() {
 		if (cursor_y > 3){
 			cursor_y = 3;
 		}
-		lcd.print(String(cursor_y));
 		return;
 	}
 	
@@ -273,7 +276,7 @@ void loop() {
 			
 			// lcd.setCursor(0, 0);
 			// lcd.print("BN: ");
-			lcd.print(String(byte_no));
+			// lcd.print(String(byte_no));
 			
 			//Wait. This should be reduced in final version and is set high for breadboard use.
 			delay(DEBOUNCE_DELAY_MS);
@@ -347,7 +350,7 @@ void loop() {
 		lcd.setCursor(0, 0);
 		lcd.print("Blinken Display-PT");
 		lcd.setCursor(0, 1);
-		lcd.print("Firmware: v0.0");
+		lcd.print("Firmware: v" + String(VER_MAJOR) + "." + String(VER_MINOR) + "." + String(VER_PATCH));
 		lcd.setCursor(0, 3);
 		if (ascii_mode){
 			lcd.print("Display Mode: ASCII");
