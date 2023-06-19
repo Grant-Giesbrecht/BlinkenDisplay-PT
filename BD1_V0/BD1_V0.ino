@@ -106,6 +106,9 @@ float val1;
 float val2;
 float val3;
 
+// Cursor Position
+int cursor_y = 0;
+
 // Which values are valid - Numberic Mode (by row)
 bool init0 = false;
 bool init1 = false;
@@ -176,13 +179,42 @@ void loop() {
 		init1 = false;
 		init2 = false;
 		init3 = false;
+		
+		return;
+	}
+	
+	// Cursor Y position signal
+	if (digitalRead(PIN_Y)){
+		lcd.setCursor(0, 0);
+		lcd.print("Y-set:");
+		cursor_y = read_data_lines();
+		if (cursor_y > 3){
+			cursor_y = 3;
+		}
+		lcd.print(String(cursor_y));
+		return;
 	}
 	
 	// Check for data input
 	if (digitalRead(PIN_RECORD)){
-		val0 = read_data_lines();
-		init0 = true;
-		isint0 = true;
+		if (cursor_y == 0){
+			val0 = read_data_lines();
+			init0 = true;
+			isint0 = true;
+		}else if(cursor_y == 1){
+			val1 = read_data_lines();
+			init1 = true;
+			isint1 = true;
+		}else if(cursor_y == 2){
+			val2 = read_data_lines();
+			init2 = true;
+			isint2 = true;
+		}else if(cursor_y == 3){
+			val3 = read_data_lines();
+			init3 = true;
+			isint3 = true;
+		}
+		
 	}
 	
 	//--------------------------- Update Display and Interpret Serial -------------------------//
@@ -225,29 +257,55 @@ void loop() {
 			}
 			lcd.setCursor(20-str.length(), 0);
 			lcd.print(str);
-			
+		}
+		if (init1){
+			if (isint1){
+				str = String(int(val1));
+			}else{
+				str = String(val1);
+			}
+			lcd.setCursor(20-str.length(), 1);
+			lcd.print(str);
+		}
+		if (init2){
+			if (isint2){
+				str = String(int(val2));
+			}else{
+				str = String(val2);
+			}
+			lcd.setCursor(20-str.length(), 2);
+			lcd.print(str);
+		}
+		if (init3){
+			if (isint3){
+				str = String(int(val3));
+			}else{
+				str = String(val3);
+			}
+			lcd.setCursor(20-str.length(), 3);
+			lcd.print(str);
 		}
 	}
 	
-	// Check 'record to buffer' signal
-	if (digitalRead(PIN_RECORD)){
+	// // Check 'record to buffer' signal
+	// if (digitalRead(PIN_RECORD)){
 		
-		// Check that signal is new
-		if (!last_record_status){
+	// 	// Check that signal is new
+	// 	if (!last_record_status){
 			
-			// Get data and display character
-			val = read_data_lines();
-			//TODO: Translate val to char
-			// lcd.print(ascii_character);
+	// 		// Get data and display character
+	// 		val = read_data_lines();
+	// 		//TODO: Translate val to char
+	// 		// lcd.print(ascii_character);
 			
-			last_record_status = HIGH;
-		}
+	// 		last_record_status = HIGH;
+	// 	}
 		
-	}else{
-		if (last_record_status){
-			last_record_status = LOW;
-		}
-	}
+	// }else{
+	// 	if (last_record_status){
+	// 		last_record_status = LOW;
+	// 	}
+	// }
 
 	
 }
