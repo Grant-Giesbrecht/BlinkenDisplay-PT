@@ -39,6 +39,8 @@ PIN_X_ENTER, DATA=<Encoding Scheme. See Macros below.>
 
 #define PIN_BTN_INFO 15 // Hardware button to display software version / system info / mode
 
+#define DEBOUNCE_DELAY_MS 300 // Time (ms) to pause for debouncing
+
 hd44780_I2Cexp lcd(0x27); // declare lcd object: auto locate & auto config expander chip
 
 int data_pins[8] = {2, 3, 4, 5, 6, 7, 8, 9};
@@ -100,6 +102,7 @@ int last_record_status = HIGH;
 bool show_info = false;
 bool info_button_last_state = LOW;
 bool RECORD_last_state = LOW;
+bool ENTER_last_state = LOW;
 
 // Display Values - Numeric Mode (by row)
 float val0;
@@ -164,9 +167,13 @@ void loop() {
 		if (info_button_last_state == LOW){
 			show_info = !show_info;
 			lcd.clear();
+			delay(DEBOUNCE_DELAY_MS);
 		}
 		info_button_last_state = HIGH;
 	}else{
+		if (info_button_last_state == HIGH){
+			delay(DEBOUNCE_DELAY_MS);
+		}
 		info_button_last_state = LOW;
 	}
 	
@@ -197,25 +204,50 @@ void loop() {
 		return;
 	}
 	
-	// Check for data input
+	// Check for --RECORD-- key, --> data input
 	if (digitalRead(PIN_RECORD)){
 		
 		if (RECORD_last_state == LOW){
 			if (cursor_y == 0){
 				if (byte_no == 0){
 					val0 = 0;
+					lcd.setCursor(0, 0);
+					lcd.print("                    ");
+					//         12345678901234567890
+					init0 = false;
 				}
 				val0 += read_data_lines(byte_no);
 				byte_no++;
 			}else if(cursor_y == 1){
-				val1 = read_data_lines();
-				isint1 = true;
+				if (byte_no == 0){
+					val1 = 0;
+					lcd.setCursor(0, 1);
+					lcd.print("                    ");
+					//         12345678901234567890
+					init1 = false;
+				}
+				val1 += read_data_lines(byte_no);
+				byte_no++;
 			}else if(cursor_y == 2){
-				val2 = read_data_lines();
-				isint2 = true;
+				if (byte_no == 0){
+					val2 = 0;
+					lcd.setCursor(0, 2);
+					lcd.print("                    ");
+					//         12345678901234567890
+					init2 = false;
+				}
+				val2 += read_data_lines(byte_no);
+				byte_no++;
 			}else if(cursor_y == 3){
-				val3 = read_data_lines();
-				isint3 = true;
+				if (byte_no == 0){
+					val3 = 0;
+					lcd.setCursor(0, 3);
+					lcd.print("                    ");
+					//         12345678901234567890
+					init3 = false;
+				}
+				val3 += read_data_lines(byte_no);
+				byte_no++;
 			}
 			
 			lcd.setCursor(0, 0);
@@ -223,34 +255,68 @@ void loop() {
 			lcd.print(String(byte_no));
 			
 			//Wait. This should be reduced in final version and is set high for breadboard use.
-			delay(500);
+			delay(DEBOUNCE_DELAY_MS);
 		}
 		
 		RECORD_last_state = HIGH;
 
 	}else{
+		if (RECORD_last_state == HIGH){
+			delay(DEBOUNCE_DELAY_MS);
+		}
 		RECORD_last_state = LOW;
 	}
 	
-	// Check for enter key
+	// Check for --ENTER-- key
 	if (digitalRead(PIN_X_ENTER)){
 		
-		// Get encoding code
-		int encoding_code = read_data_lines();
-		
-		if (cursor_y == 0){
-			if (encoding_code == 0){
-				isint0 = true;
-			}else{
-				isint0 = false;
+		if (ENTER_last_state == LOW){
+			// Get encoding code
+			int encoding_code = read_data_lines();
+			
+			if (cursor_y == 0){
+				if (encoding_code == 0){
+					isint0 = true;
+				}else{
+					isint0 = false;
+				}
+				init0 = true;
+			}else if(cursor_y == 1){
+				if (encoding_code == 0){
+					isint1 = true;
+				}else{
+					isint1 = false;
+				}
+				init1 = true;
+			}else if(cursor_y == 2){
+				if (encoding_code == 0){
+					isint2 = true;
+				}else{
+					isint2 = false;
+				}
+				init2 = true;
+			}else if(cursor_y == 3){
+				if (encoding_code == 0){
+					isint3 = true;
+				}else{
+					isint3 = false;
+				}
+				init3 = true;
 			}
-			init0 = true;
+			
+			
+			// Reset byte count
+			byte_no = 0;
+			
+			delay(DEBOUNCE_DELAY_MS);
 		}
 		
-		// Reset byte count
-		byte_no = 0;
-		
-		
+		ENTER_last_state = HIGH;
+	}else{
+		if (ENTER_last_state == HIGH){
+			delay(DEBOUNCE_DELAY_MS);
+		}
+		ENTER_last_state = LOW;
 	}
 	
 	//--------------------------- Update Display and Interpret Serial -------------------------//
