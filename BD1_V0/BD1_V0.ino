@@ -84,10 +84,10 @@ void setup() {
 int x = 0;
 int y = 0;
 
-int read_data_lines(){
+int read_data_lines(int byte_no=0){
 	float data_float = 0;
 	for (int i = 7 ; i >= 0 ; i--){
-		if (digitalRead(data_pins[i]) == HIGH) data_float += (pow(2.0, float(i)));	
+		if (digitalRead(data_pins[i]) == HIGH) data_float += (pow(2.0, float(i+8*byte_no)));	
 	}
 	
 	return round(data_float);
@@ -99,6 +99,7 @@ bool ascii_mode = false;
 int last_record_status = HIGH;
 bool show_info = false;
 bool info_button_last_state = LOW;
+bool RECORD_last_state = LOW;
 
 // Display Values - Numeric Mode (by row)
 float val0;
@@ -108,6 +109,7 @@ float val3;
 
 // Cursor Position
 int cursor_y = 0;
+int byte_no = 0;
 
 // Which values are valid - Numberic Mode (by row)
 bool init0 = false;
@@ -197,23 +199,57 @@ void loop() {
 	
 	// Check for data input
 	if (digitalRead(PIN_RECORD)){
-		if (cursor_y == 0){
-			val0 = read_data_lines();
-			init0 = true;
-			isint0 = true;
-		}else if(cursor_y == 1){
-			val1 = read_data_lines();
-			init1 = true;
-			isint1 = true;
-		}else if(cursor_y == 2){
-			val2 = read_data_lines();
-			init2 = true;
-			isint2 = true;
-		}else if(cursor_y == 3){
-			val3 = read_data_lines();
-			init3 = true;
-			isint3 = true;
+		
+		if (RECORD_last_state == LOW){
+			if (cursor_y == 0){
+				if (byte_no == 0){
+					val0 = 0;
+				}
+				val0 += read_data_lines(byte_no);
+				byte_no++;
+			}else if(cursor_y == 1){
+				val1 = read_data_lines();
+				isint1 = true;
+			}else if(cursor_y == 2){
+				val2 = read_data_lines();
+				isint2 = true;
+			}else if(cursor_y == 3){
+				val3 = read_data_lines();
+				isint3 = true;
+			}
+			
+			lcd.setCursor(0, 0);
+			lcd.print("BN: ");
+			lcd.print(String(byte_no));
+			
+			//Wait. This should be reduced in final version and is set high for breadboard use.
+			delay(500);
 		}
+		
+		RECORD_last_state = HIGH;
+
+	}else{
+		RECORD_last_state = LOW;
+	}
+	
+	// Check for enter key
+	if (digitalRead(PIN_X_ENTER)){
+		
+		// Get encoding code
+		int encoding_code = read_data_lines();
+		
+		if (cursor_y == 0){
+			if (encoding_code == 0){
+				isint0 = true;
+			}else{
+				isint0 = false;
+			}
+			init0 = true;
+		}
+		
+		// Reset byte count
+		byte_no = 0;
+		
 		
 	}
 	
@@ -286,26 +322,6 @@ void loop() {
 			lcd.print(str);
 		}
 	}
-	
-	// // Check 'record to buffer' signal
-	// if (digitalRead(PIN_RECORD)){
-		
-	// 	// Check that signal is new
-	// 	if (!last_record_status){
-			
-	// 		// Get data and display character
-	// 		val = read_data_lines();
-	// 		//TODO: Translate val to char
-	// 		// lcd.print(ascii_character);
-			
-	// 		last_record_status = HIGH;
-	// 	}
-		
-	// }else{
-	// 	if (last_record_status){
-	// 		last_record_status = LOW;
-	// 	}
-	// }
 
 	
 }
