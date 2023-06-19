@@ -215,8 +215,8 @@ void loop() {
 	
 	// Cursor Y position signal
 	if (digitalRead(PIN_Y)){
-		lcd.setCursor(0, 0);
-		lcd.print("Y-set:");
+		// lcd.setCursor(0, 0);
+		// lcd.print("Y-set:");
 		cursor_y = read_data_lines();
 		if (cursor_y > 3){
 			cursor_y = 3;
@@ -271,8 +271,8 @@ void loop() {
 				byte_no++;
 			}
 			
-			lcd.setCursor(0, 0);
-			lcd.print("BN: ");
+			// lcd.setCursor(0, 0);
+			// lcd.print("BN: ");
 			lcd.print(String(byte_no));
 			
 			//Wait. This should be reduced in final version and is set high for breadboard use.
