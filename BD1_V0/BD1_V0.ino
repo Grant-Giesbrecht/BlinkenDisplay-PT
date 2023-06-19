@@ -95,6 +95,22 @@ int read_data_lines(int byte_no=0){
 	return round(data_float);
 }
 
+unsigned long int read_uli_data_lines(int byte_no=0){
+	float data_float = 0;
+	for (int i = 7 ; i >= 0 ; i--){
+		if (digitalRead(data_pins[i]) == HIGH) data_float += (pow(2.0, float(i)));
+	}
+	
+	unsigned long int x = round(data_float);
+	
+	// shift bit
+	for (int i = 0; i < byte_no ; i++){
+		x = (x << 8);
+	}
+	
+	return x;
+}
+
 // Global Variables
 bool disp_enabled = false;
 bool ascii_mode = false;
@@ -109,6 +125,11 @@ float val0;
 float val1;
 float val2;
 float val3;
+
+unsigned long int lint0;
+unsigned long int lint1;
+unsigned long int lint2;
+unsigned long int lint3;
 
 // Cursor Position
 int cursor_y = 0;
@@ -210,43 +231,43 @@ void loop() {
 		if (RECORD_last_state == LOW){
 			if (cursor_y == 0){
 				if (byte_no == 0){
-					val0 = 0;
+					lint0 = 0;
 					lcd.setCursor(0, 0);
 					lcd.print("                    ");
 					//         12345678901234567890
 					init0 = false;
 				}
-				val0 += read_data_lines(byte_no);
+				lint0 += read_uli_data_lines(byte_no);
 				byte_no++;
 			}else if(cursor_y == 1){
 				if (byte_no == 0){
-					val1 = 0;
+					lint1 = 0;
 					lcd.setCursor(0, 1);
 					lcd.print("                    ");
 					//         12345678901234567890
 					init1 = false;
 				}
-				val1 += read_data_lines(byte_no);
+				lint1 += read_uli_data_lines(byte_no);
 				byte_no++;
 			}else if(cursor_y == 2){
 				if (byte_no == 0){
-					val2 = 0;
+					lint2 = 0;
 					lcd.setCursor(0, 2);
 					lcd.print("                    ");
 					//         12345678901234567890
 					init2 = false;
 				}
-				val2 += read_data_lines(byte_no);
+				lint2 += read_uli_data_lines(byte_no);
 				byte_no++;
 			}else if(cursor_y == 3){
 				if (byte_no == 0){
-					val3 = 0;
+					lint3 = 0;
 					lcd.setCursor(0, 3);
 					lcd.print("                    ");
 					//         12345678901234567890
 					init3 = false;
 				}
-				val3 += read_data_lines(byte_no);
+				lint3 += read_uli_data_lines(byte_no);
 				byte_no++;
 			}
 			
@@ -353,7 +374,7 @@ void loop() {
 		
 		if (init0){
 			if (isint0){
-				str = String(int(val0));
+				str = String(lint0);
 			}else{
 				str = String(val0);
 			}
@@ -362,7 +383,7 @@ void loop() {
 		}
 		if (init1){
 			if (isint1){
-				str = String(int(val1));
+				str = String(lint1);
 			}else{
 				str = String(val1);
 			}
@@ -371,7 +392,7 @@ void loop() {
 		}
 		if (init2){
 			if (isint2){
-				str = String(int(val2));
+				str = String(lint2);
 			}else{
 				str = String(val2);
 			}
@@ -380,7 +401,7 @@ void loop() {
 		}
 		if (init3){
 			if (isint3){
-				str = String(int(val3));
+				str = String(lint3);
 			}else{
 				str = String(val3);
 			}
