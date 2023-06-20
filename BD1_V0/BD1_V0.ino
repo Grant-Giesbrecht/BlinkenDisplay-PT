@@ -24,9 +24,11 @@ PIN_X_ENTER, DATA=<Encoding Scheme. See Macros below.>
 
 */
 
+#define ENABLE_SERIAL_PORT false
+
 #define VER_MAJOR 0
 #define VER_MINOR 0
-#define VER_PATCH 0
+#define VER_PATCH 1
 
 // Encoding Scheme IDs
 #define ENCODING_INT     0b00
@@ -36,6 +38,7 @@ PIN_X_ENTER, DATA=<Encoding Scheme. See Macros below.>
 #define PIN_RECORD 10 // Tells MCU to record the value
 #define PIN_X_ENTER 11 // (ASCII) Tells MCU to put cursor on 'x' coordinate specified on data lines. (NUM) Tells the MCU the numeric entry is complete.
 #define PIN_Y 12 // Tells MCU to put cursor on 'y' coordinate specified on data lines
+#define PIN_RESET 14 //Tells MCU Blinkenrechner has RESET, clear all data, reset cursor position and ignore input commands from CPU.
 
 #define PIN_CLEAR 13 // Tells MCU to clear display buffer
 #define PIN_FLAG_ASCII 17 // CPU flag: If ON, sets display to ASCII mode
@@ -71,19 +74,14 @@ void setup() {
 	pinMode(PIN_Y, INPUT);
 	pinMode(PIN_CLEAR, INPUT);
 	pinMode(PIN_ENABLE_FLAG, INPUT);
-	pinMode(PIN_FLAG_ASCII, INPUT);
+	pinMode(PIN_FLAG_ASCII, INPUT);	
+	pinMode(PIN_RESET, INPUT);
 	
-	
-	// // Print a message to the LCD
-	// lcd.print("Hello, World!");
-	
-	// lcd.backlight();
-	// lcd.setCursor(0, 0); //X, Y
-	// lcd.print("A");
-	// lcd.print("B");
-	// lcd.print("C");
-	// lcd.setCursor(0,3);
-	// lcd.print("K");
+	// Enable serial  (USB) port if requested (for debug)
+	if (ENABLE_SERIAL_PORT){
+		Serial.begin(9600);
+		Serial.write("Hello from Blinken Display-PT");
+	}
 	
 }
 
@@ -153,38 +151,35 @@ bool isint3 = false;
 char buffer[20];
 String str;
 
+bool is_reset = false;
+
 void loop() {
+	
+	if (ENABLE_SERIAL_PORT){
+		Serial.print("New loop");
+	}
+	
 	
 	int val;
 	
 	//--------------------------- Check for basic inputs ----------------------------//
 	
-	// Check CPU enabled flag
-	if (digitalRead(PIN_ENABLE_FLAG) == HIGH){
-		disp_enabled = true;
-		lcd.backlight();
-	}else{
+	// Check for reset mode
+	if (digitalRead(PIN_RESET)){
+		
+		// Clear all state variables
+		init0 = false;
+		init1 = false;
+		init2 = false;
+		init3 = false;
+		cursor_y = 0;
+		byte_no = 0;
 		disp_enabled = false;
-		lcd.noBacklight();
-	}
-	
-	// Check display mode
-	if (digitalRead(PIN_FLAG_ASCII) == HIGH){
-		
-		// Clear display if mode changed
-		if (ascii_mode == false){
-			lcd.clear();
-		}
-		
-		ascii_mode = true;
-	}else{
-		
-		// Clear display if mode changed
-		if (ascii_mode == true){
-			lcd.clear();
-		}
-		
 		ascii_mode = false;
+		show_info = false;
+		
+		// Set device to reset mode
+		is_reset = true;
 	}
 	
 	// Check for info button toggle
@@ -202,151 +197,193 @@ void loop() {
 		info_button_last_state = LOW;
 	}
 	
-	// Check for clear signal
-	if (digitalRead(PIN_CLEAR)){
-		
-		// Clear display
-		lcd.clear();
-		
-		// Clear buffers (Numeric mode)
-		init0 = false;
-		init1 = false;
-		init2 = false;
-		init3 = false;
-		
-		return;
+	// Check CPU enabled flag
+	if (digitalRead(PIN_ENABLE_FLAG) == HIGH){
+		disp_enabled = true;
+		lcd.backlight();
+	}else{
+		disp_enabled = false;
+		lcd.noBacklight();
 	}
 	
-	// Cursor Y position signal
-	if (digitalRead(PIN_Y)){
-		// lcd.setCursor(0, 0);
-		// lcd.print("Y-set:");
-		cursor_y = read_data_lines();
-		if (cursor_y > 3){
-			cursor_y = 3;
+	// Read control inputs (if not in reset mode)
+	if (!is_reset){
+		// Check display mode
+		if (digitalRead(PIN_FLAG_ASCII) == HIGH){
+			
+			// Clear display if mode changed
+			if (ascii_mode == false){
+				lcd.clear();
+			}
+			
+			ascii_mode = true;
+		}else{
+			
+			// Clear display if mode changed
+			if (ascii_mode == true){
+				lcd.clear();
+			}
+			
+			ascii_mode = false;
 		}
-		return;
-	}
-	
-	// Check for --RECORD-- key, --> data input
-	if (digitalRead(PIN_RECORD)){
 		
-		if (RECORD_last_state == LOW){
-			if (cursor_y == 0){
-				if (byte_no == 0){
-					lint0 = 0;
-					lcd.setCursor(0, 0);
-					lcd.print("                    ");
-					//         12345678901234567890
-					init0 = false;
-				}
-				lint0 += read_uli_data_lines(byte_no);
-				byte_no++;
-			}else if(cursor_y == 1){
-				if (byte_no == 0){
-					lint1 = 0;
-					lcd.setCursor(0, 1);
-					lcd.print("                    ");
-					//         12345678901234567890
-					init1 = false;
-				}
-				lint1 += read_uli_data_lines(byte_no);
-				byte_no++;
-			}else if(cursor_y == 2){
-				if (byte_no == 0){
-					lint2 = 0;
-					lcd.setCursor(0, 2);
-					lcd.print("                    ");
-					//         12345678901234567890
-					init2 = false;
-				}
-				lint2 += read_uli_data_lines(byte_no);
-				byte_no++;
-			}else if(cursor_y == 3){
-				if (byte_no == 0){
-					lint3 = 0;
-					lcd.setCursor(0, 3);
-					lcd.print("                    ");
-					//         12345678901234567890
-					init3 = false;
-				}
-				lint3 += read_uli_data_lines(byte_no);
-				byte_no++;
+		// Check for clear signal
+		if (digitalRead(PIN_CLEAR) == HIGH){
+			
+			if (ENABLE_SERIAL_PORT){
+				Serial.println("--CLEAR--");
+			}
+			
+			// Clear display
+			lcd.clear();
+			
+			// Clear buffers (Numeric mode)
+			init0 = false;
+			init1 = false;
+			init2 = false;
+			init3 = false;
+			
+			return;
+		}
+		
+		// Cursor Y position signal
+		if (digitalRead(PIN_Y)){
+			
+			if (ENABLE_SERIAL_PORT){
+				Serial.println("--Y--");
 			}
 			
 			// lcd.setCursor(0, 0);
-			// lcd.print("BN: ");
-			// lcd.print(String(byte_no));
-			
-			//Wait. This should be reduced in final version and is set high for breadboard use.
-			delay(DEBOUNCE_DELAY_MS);
+			// lcd.print("Y-set:");
+			cursor_y = read_data_lines();
+			if (cursor_y > 3){
+				cursor_y = 3;
+			}
+			return;
 		}
 		
-		RECORD_last_state = HIGH;
-
-	}else{
-		if (RECORD_last_state == HIGH){
-			delay(DEBOUNCE_DELAY_MS);
-		}
-		RECORD_last_state = LOW;
-	}
-	
-	// Check for --ENTER-- key
-	if (digitalRead(PIN_X_ENTER)){
-		
-		if (ENTER_last_state == LOW){
-			// Get encoding code
-			int encoding_code = read_data_lines();
+		// Check for --RECORD-- key, --> data input
+		if (digitalRead(PIN_RECORD)){
 			
-			if (cursor_y == 0){
-				if (encoding_code == 0){
-					isint0 = true;
-				}else{
-					isint0 = false;
+			if (RECORD_last_state == LOW){
+				if (cursor_y == 0){
+					if (byte_no == 0){
+						lint0 = 0;
+						lcd.setCursor(0, 0);
+						lcd.print("                    ");
+						//         12345678901234567890
+						init0 = false;
+					}
+					lint0 += read_uli_data_lines(byte_no);
+					byte_no++;
+				}else if(cursor_y == 1){
+					if (byte_no == 0){
+						lint1 = 0;
+						lcd.setCursor(0, 1);
+						lcd.print("                    ");
+						//         12345678901234567890
+						init1 = false;
+					}
+					lint1 += read_uli_data_lines(byte_no);
+					byte_no++;
+				}else if(cursor_y == 2){
+					if (byte_no == 0){
+						lint2 = 0;
+						lcd.setCursor(0, 2);
+						lcd.print("                    ");
+						//         12345678901234567890
+						init2 = false;
+					}
+					lint2 += read_uli_data_lines(byte_no);
+					byte_no++;
+				}else if(cursor_y == 3){
+					if (byte_no == 0){
+						lint3 = 0;
+						lcd.setCursor(0, 3);
+						lcd.print("                    ");
+						//         12345678901234567890
+						init3 = false;
+					}
+					lint3 += read_uli_data_lines(byte_no);
+					byte_no++;
 				}
-				init0 = true;
-			}else if(cursor_y == 1){
-				if (encoding_code == 0){
-					isint1 = true;
-				}else{
-					isint1 = false;
-				}
-				init1 = true;
-			}else if(cursor_y == 2){
-				if (encoding_code == 0){
-					isint2 = true;
-				}else{
-					isint2 = false;
-				}
-				init2 = true;
-			}else if(cursor_y == 3){
-				if (encoding_code == 0){
-					isint3 = true;
-				}else{
-					isint3 = false;
-				}
-				init3 = true;
+				
+				// lcd.setCursor(0, 0);
+				// lcd.print("BN: ");
+				// lcd.print(String(byte_no));
+				
+				//Wait. This should be reduced in final version and is set high for breadboard use.
+				delay(DEBOUNCE_DELAY_MS);
 			}
 			
-			
-			// Reset byte count
-			byte_no = 0;
-			
-			delay(DEBOUNCE_DELAY_MS);
+			RECORD_last_state = HIGH;
+
+		}else{
+			if (RECORD_last_state == HIGH){
+				delay(DEBOUNCE_DELAY_MS);
+			}
+			RECORD_last_state = LOW;
 		}
 		
-		ENTER_last_state = HIGH;
-	}else{
+		// Check for --ENTER-- key
+		if (digitalRead(PIN_X_ENTER)){
+			
+			if (ENTER_last_state == LOW){
+				// Get encoding code
+				int encoding_code = read_data_lines();
+				
+				if (cursor_y == 0){
+					if (encoding_code == 0){
+						isint0 = true;
+					}else{
+						isint0 = false;
+					}
+					init0 = true;
+				}else if(cursor_y == 1){
+					if (encoding_code == 0){
+						isint1 = true;
+					}else{
+						isint1 = false;
+					}
+					init1 = true;
+				}else if(cursor_y == 2){
+					if (encoding_code == 0){
+						isint2 = true;
+					}else{
+						isint2 = false;
+					}
+					init2 = true;
+				}else if(cursor_y == 3){
+					if (encoding_code == 0){
+						isint3 = true;
+					}else{
+						isint3 = false;
+					}
+					init3 = true;
+				}
+				
+				
+				// Reset byte count
+				byte_no = 0;
+				
+				delay(DEBOUNCE_DELAY_MS);
+			}
+			
+			ENTER_last_state = HIGH;
+		}else{
 		if (ENTER_last_state == HIGH){
 			delay(DEBOUNCE_DELAY_MS);
 		}
 		ENTER_last_state = LOW;
 	}
-	
+	}
 	//--------------------------- Update Display and Interpret Serial -------------------------//
 	
 	// Show DISPLAY INFO if requested
 	if (show_info){
+		
+		lcd.backlight();
+		
 		lcd.setCursor(0, 0);
 		lcd.print("Blinken Display-PT");
 		lcd.setCursor(0, 1);
@@ -359,6 +396,11 @@ void loop() {
 			lcd.print("Display Mode: Num.");
 			//         12345678901234567890
 		}
+		
+		if (!disp_enabled){
+			lcd.noBacklight();
+		}
+		
 		return;
 	}
 	
