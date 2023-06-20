@@ -176,22 +176,34 @@ void loop() {
 		byte_no = 0;
 		disp_enabled = false;
 		ascii_mode = false;
-		show_info = false;
 		
 		// Set device to reset mode
 		is_reset = true;
 	}
 	
 	// Check for info button toggle
-	if (digitalRead(PIN_BTN_INFO) == HIGH){
+	if (digitalRead(PIN_BTN_INFO) == HIGH){	
 		if (info_button_last_state == LOW){
+			if (ENABLE_SERIAL_PORT){
+				Serial.println("INFO BUTTON PRESS");
+			}
 			show_info = !show_info;
+			if (show_info){
+				if (ENABLE_SERIAL_PORT){
+					Serial.println("\n\nINFO MODE ON\n\n");
+				}
+			}else{
+				if (ENABLE_SERIAL_PORT){
+					Serial.println("XXXXXXXXXXXXXX\nXXXXXXXXXXXXXX\nXXXXXXXXXXXXXX\nXXXXXXXXXXXXXX\n");
+				}
+			}
 			lcd.clear();
 			delay(DEBOUNCE_DELAY_MS);
 		}
 		info_button_last_state = HIGH;
 	}else{
 		if (info_button_last_state == HIGH){
+			Serial.println("\tINFO BUTTON RELEASE");
 			delay(DEBOUNCE_DELAY_MS);
 		}
 		info_button_last_state = LOW;
@@ -382,6 +394,10 @@ void loop() {
 	// Show DISPLAY INFO if requested
 	if (show_info){
 		
+		if (ENABLE_SERIAL_PORT){
+			Serial.println("In show info");
+		}
+		
 		lcd.backlight();
 		
 		lcd.setCursor(0, 0);
@@ -397,11 +413,10 @@ void loop() {
 			//         12345678901234567890
 		}
 		
-		if (!disp_enabled){
-			lcd.noBacklight();
-		}
-		
 		return;
+	}else if(!disp_enabled){
+		Serial.println("Turning off backlight!");
+		lcd.noBacklight();
 	}
 	
 	if (ascii_mode){ //------- ASCII Mode -----------
