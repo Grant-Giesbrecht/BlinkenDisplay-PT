@@ -46,7 +46,7 @@ PIN_X_ENTER, DATA=<Encoding Scheme. See Macros below.>
 
 #define PIN_BTN_INFO 15 // Hardware button to display software version / system info / mode
 
-#define DEBOUNCE_DELAY_MS 300 // Time (ms) to pause for debouncing
+#define DEBOUNCE_DELAY_MS 50 // Time (ms) to pause for debouncing
 
 hd44780_I2Cexp lcd(0x27); // declare lcd object: auto locate & auto config expander chip
 
